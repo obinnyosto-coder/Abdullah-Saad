@@ -14,92 +14,86 @@ import { MOCK_POSTS, DEFAULT_SETTINGS } from './constants';
 import { Post, SiteSettings } from './types';
 
 const App: React.FC = () => {
-  // Persistence Keys
-  const STORAGE_KEY = 'abdullahsaad_posts_v3';
-  const SETTINGS_KEY = 'abdullahsaad_settings_v3';
-  const READ_SETTINGS_KEY = 'abdullahsaad_reader_v3';
+  const STORAGE_KEY = 'abdullahsaad_posts_v4';
+  const SETTINGS_KEY = 'abdullahsaad_settings_v4';
+  const READ_SETTINGS_KEY = 'abdullahsaad_reader_v4';
 
-  // State
+  // State with Safe Fallbacks
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginPassword, setLoginPassword] = useState('');
   
   const [posts, setPosts] = useState<Post[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : MOCK_POSTS;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_POSTS));
+        return MOCK_POSTS;
+      }
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to load posts:", e);
+      return MOCK_POSTS;
+    }
   });
 
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
-    const saved = localStorage.getItem(SETTINGS_KEY);
-    return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+    try {
+      const saved = localStorage.getItem(SETTINGS_KEY);
+      if (!saved) {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(DEFAULT_SETTINGS));
+        return DEFAULT_SETTINGS;
+      }
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to load settings:", e);
+      return DEFAULT_SETTINGS;
+    }
   });
 
   const [readingSettings, setReadingSettings] = useState(() => {
-    const saved = localStorage.getItem(READ_SETTINGS_KEY);
-    return saved ? JSON.parse(saved) : { fontSize: 20, fontFamily: 'serif-content' };
+    try {
+      const saved = localStorage.getItem(READ_SETTINGS_KEY);
+      return saved ? JSON.parse(saved) : { fontSize: 20, fontFamily: 'serif-content' };
+    } catch (e) {
+      return { fontSize: 20, fontFamily: 'serif-content' };
+    }
   });
 
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState<'home' | 'about'>('home');
-  
-  // Routing Logic
-  const [currentPostId, setCurrentPostId] = useState<number | null>(() => {
+  const [currentPostId, setCurrentPostId] = useState<number | null>(null);
+
+  // Sync with URL on Load
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const postId = params.get('post');
     const page = params.get('page');
-    return postId ? parseInt(postId) : null;
-  });
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const page = params.get('page');
+    
+    if (postId) setCurrentPostId(parseInt(postId));
     if (page === 'about') setCurrentPage('about');
-    else setCurrentPage('home');
   }, []);
 
-  useEffect(() => {
-    const handlePopState = () => {
-      const params = new URLSearchParams(window.location.search);
-      const postId = params.get('post');
-      const page = params.get('page');
-      setCurrentPostId(postId ? parseInt(postId) : null);
-      setCurrentPage(page === 'about' ? 'about' : 'home');
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  const viewPost = (id: number) => {
-    setCurrentPostId(id);
-    setCurrentPage('home');
-    const newUrl = `${window.location.origin}${window.location.pathname}?post=${id}`;
-    window.history.pushState({ path: newUrl }, '', newUrl);
-    window.scrollTo(0, 0);
-  };
-
-  const navigateAbout = () => {
-    setCurrentPostId(null);
-    setCurrentPage('about');
-    const newUrl = `${window.location.origin}${window.location.pathname}?page=about`;
-    window.history.pushState({ path: newUrl }, '', newUrl);
-    window.scrollTo(0, 0);
-  };
-
-  const goHome = () => {
-    setCurrentPostId(null);
-    setCurrentPage('home');
-    const newUrl = `${window.location.origin}${window.location.pathname}`;
-    window.history.pushState({ path: newUrl }, '', newUrl);
-    window.scrollTo(0, 0);
-  };
-
-  // Sync with LocalStorage
+  // Sync State to Storage
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(posts)); }, [posts]);
   useEffect(() => { localStorage.setItem(SETTINGS_KEY, JSON.stringify(siteSettings)); }, [siteSettings]);
   useEffect(() => { localStorage.setItem(READ_SETTINGS_KEY, JSON.stringify(readingSettings)); }, [readingSettings]);
 
-  // Filters
+  // Navigation Logic
+  const navigateTo = (page: 'home' | 'about', postId: number | null = null) => {
+    setCurrentPage(page);
+    setCurrentPostId(postId);
+    
+    const newUrl = new URL(window.location.href);
+    newUrl.search = "";
+    if (postId) newUrl.searchParams.set('post', postId.toString());
+    if (page === 'about') newUrl.searchParams.set('page', 'about');
+    
+    window.history.pushState({}, '', newUrl);
+    window.scrollTo(0, 0);
+  };
+
   const filteredPosts = useMemo(() => {
     return posts.filter(post => {
       const matchesCategory = categoryFilter === 'All' || post.category === categoryFilter;
@@ -141,31 +135,48 @@ const App: React.FC = () => {
 
   return (
     <div 
-      className={`min-h-screen flex flex-col font-sans bg-white selection:bg-brand-gold selection:text-white ${readingSettings.fontFamily}`}
+      className={`min-h-screen flex flex-col font-sans bg-white ${readingSettings.fontFamily}`}
       style={typographyStyles}
     >
       <TopBar />
       <Header 
         onSearch={setSearchQuery} 
-        onFilter={setCategoryFilter} 
-        onNavigateAbout={navigateAbout}
+        onFilter={(c) => { setCategoryFilter(c); navigateTo('home'); }} 
+        onNavigateAbout={() => navigateTo('about')}
         currentCategory={categoryFilter} 
         currentPage={currentPage}
         siteName={siteSettings.siteName}
-        onGoHome={goHome}
+        onGoHome={() => { setCategoryFilter('All'); navigateTo('home'); }}
       />
       
       <main className="flex-grow">
         {currentPage === 'about' ? (
           <AboutView settings={siteSettings} />
-        ) : !currentPostId ? (
-          /* Home Post Grid View */
+        ) : currentPostId ? (
+          <div className="max-w-7xl mx-auto px-4 md:px-8 py-12">
+            <div className="flex flex-col lg:flex-row gap-16">
+              <div className="lg:w-2/3">
+                {selectedPostData ? (
+                  <SinglePostView post={selectedPostData} onBack={() => navigateTo('home')} />
+                ) : (
+                  <div className="py-20 text-center">
+                    <h3 className="text-2xl font-bold text-gray-400">লেখাটি খুঁজে পাওয়া যায়নি।</h3>
+                    <button onClick={() => navigateTo('home')} className="mt-4 text-brand-teal font-bold underline">প্রচ্ছদে ফিরে যান</button>
+                  </div>
+                )}
+              </div>
+              <div className="lg:w-1/3">
+                <Sidebar onCategoryClick={(c) => { setCategoryFilter(c); navigateTo('home'); }} adBannerUrl={siteSettings.sidebarAdUrl} />
+              </div>
+            </div>
+          </div>
+        ) : (
           <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 md:py-16">
             <div className="flex flex-col lg:flex-row gap-16">
               <div className="lg:w-2/3">
                 {categoryFilter === 'All' && searchQuery === '' && filteredPosts.length > 0 && (
                   <div className="mb-16">
-                    <PostCard post={filteredPosts[0]} onViewPost={viewPost} featured />
+                    <PostCard post={filteredPosts[0]} onViewPost={(id) => navigateTo('home', id)} featured />
                   </div>
                 )}
                 
@@ -176,39 +187,19 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 gap-12">
-                  {filteredPosts.slice(categoryFilter === 'All' && searchQuery === '' ? 1 : 0).length > 0 ? (
-                    filteredPosts.slice(categoryFilter === 'All' && searchQuery === '' ? 1 : 0).map((post) => (
-                      <PostCard key={post.id} post={post} onViewPost={viewPost} />
-                    ))
-                  ) : filteredPosts.length === 0 ? (
+                  {filteredPosts.slice(categoryFilter === 'All' && searchQuery === '' ? 1 : 0).map((post) => (
+                    <PostCard key={post.id} post={post} onViewPost={(id) => navigateTo('home', id)} />
+                  ))}
+                  {filteredPosts.length === 0 && (
                     <div className="py-20 text-center space-y-4">
                        <i className="fas fa-search text-5xl text-gray-200"></i>
                        <h3 className="text-xl serif-content text-gray-400">দুঃখিত, কোনো লেখা পাওয়া যায়নি।</h3>
                     </div>
-                  ) : null}
+                  )}
                 </div>
               </div>
               <div className="lg:w-1/3">
-                <Sidebar onCategoryClick={(c) => { setCategoryFilter(c); goHome(); }} adBannerUrl={siteSettings.sidebarAdUrl} />
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* Single Post View */
-          <div className="max-w-7xl mx-auto px-4 md:px-8 py-12">
-            <div className="flex flex-col lg:flex-row gap-16">
-              <div className="lg:w-2/3">
-                {selectedPostData ? (
-                  <SinglePostView post={selectedPostData} onBack={goHome} />
-                ) : (
-                  <div className="py-20 text-center">
-                    <h3 className="text-2xl font-bold text-gray-400">লেখাটি খুঁজে পাওয়া যায়নি।</h3>
-                    <button onClick={goHome} className="mt-4 text-brand-teal font-bold underline">প্রচ্ছদে ফিরে যান</button>
-                  </div>
-                )}
-              </div>
-              <div className="lg:w-1/3">
-                <Sidebar onCategoryClick={(c) => { setCategoryFilter(c); goHome(); }} adBannerUrl={siteSettings.sidebarAdUrl} />
+                <Sidebar onCategoryClick={(c) => { setCategoryFilter(c); navigateTo('home'); }} adBannerUrl={siteSettings.sidebarAdUrl} />
               </div>
             </div>
           </div>

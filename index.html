@@ -8,7 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Fonts: Tiro Bangla (Classic Editorial), Hind Siliguri (Modern Interface) -->
     <link href="https://fonts.googleapis.com/css2?family=Tiro+Bangla:ital@0;1&family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
@@ -43,31 +42,32 @@
       body {
         background-color: #ffffff;
         -webkit-font-smoothing: antialiased;
-        transition: font-size 0.2s ease, font-family 0.2s ease;
       }
       .serif-content {
         font-family: 'Tiro Bangla', serif !important;
       }
-      .modern-content {
-        font-family: 'Hind Siliguri', sans-serif !important;
+      #loading-overlay {
+        position: fixed;
+        inset: 0;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.5s ease;
       }
-      .line-clamp-3 {
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;  
-        overflow: hidden;
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #006064;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
       }
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #f1f1f1;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #006064;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #ca8a04;
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
       }
     </style>
 <script type="importmap">
@@ -81,9 +81,13 @@
   }
 }
 </script>
-<script type="module" src="index.tsx"></script>
 </head>
 <body class="text-gray-800 overflow-x-hidden font-sans">
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <p class="mt-4 text-brand-teal font-bold serif-content">লোড হচ্ছে...</p>
+    </div>
     <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
 </body>
 </html>
