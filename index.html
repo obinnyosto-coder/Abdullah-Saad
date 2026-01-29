@@ -4,11 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>abdullahsaad | সাহিত্য ও সংস্কৃতি</title>
+    <title>আবদুল্লাহ সাআদ | সাহিত্য ও সংস্কৃতি</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@400;700&family=Noto+Sans+Bengali:wght@300;400;500&display=swap" rel="stylesheet">
+    <!-- Fonts: Tiro Bangla (Classic Editorial), Hind Siliguri (Modern Interface) -->
+    <link href="https://fonts.googleapis.com/css2?family=Tiro+Bangla:ital@0;1&family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
       tailwind.config = {
@@ -19,12 +20,12 @@
                 teal: '#006064',
                 gold: '#ca8a04',
                 dark: '#111827',
-                light: '#f3f4f6'
+                light: '#f8fafc'
               }
             },
             fontFamily: {
-              serif: ['"Noto Serif Bengali"', 'serif'],
-              sans: ['"Noto Sans Bengali"', 'sans-serif'],
+              serif: ['"Tiro Bangla"', 'serif'],
+              sans: ['"Hind Siliguri"', 'sans-serif'],
             },
             keyframes: {
               fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
@@ -40,12 +41,15 @@
     </script>
     <style>
       body {
-        font-family: 'Noto Sans Bengali', sans-serif;
         background-color: #ffffff;
         -webkit-font-smoothing: antialiased;
+        transition: font-size 0.2s ease, font-family 0.2s ease;
       }
-      h1, h2, h3, h4, .serif-font {
-        font-family: 'Noto Serif Bengali', serif;
+      .serif-content {
+        font-family: 'Tiro Bangla', serif !important;
+      }
+      .modern-content {
+        font-family: 'Hind Siliguri', sans-serif !important;
       }
       .line-clamp-3 {
         display: -webkit-box;
@@ -76,7 +80,7 @@
 }
 </script>
 </head>
-<body class="text-gray-800 overflow-x-hidden">
+<body class="text-gray-800 overflow-x-hidden font-sans">
     <div id="root"></div>
 </body>
 </html>

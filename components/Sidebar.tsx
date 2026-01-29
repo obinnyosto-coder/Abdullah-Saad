@@ -4,9 +4,10 @@ import { CATEGORIES, MOCK_POSTS } from '../constants';
 
 interface SidebarProps {
   onCategoryClick: (category: string) => void;
+  adBannerUrl: string;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onCategoryClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onCategoryClick, adBannerUrl }) => {
   return (
     <aside className="space-y-12 sticky top-24">
       {/* Author Widget */}
@@ -29,10 +30,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onCategoryClick }) => {
         </div>
       </div>
 
-      {/* Ad Space */}
+      {/* Dynamic Ad Space */}
       <div className="bg-gray-100 h-[280px] flex items-center justify-center border border-dashed border-gray-300 relative group cursor-pointer overflow-hidden">
-        <img src="https://placehold.co/336x280/f3f4f6/9ca3af?text=Ad+Space" className="w-full h-full object-cover group-hover:scale-105 transition-transform" alt="Ad" />
-        <span className="absolute bottom-2 right-2 text-[8px] uppercase text-gray-400">Advertisement</span>
+        <img src={adBannerUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform" alt="Ad" />
+        <span className="absolute bottom-2 right-2 text-[8px] uppercase text-gray-400 bg-white/50 px-1">Advertisement</span>
       </div>
 
       {/* Categories Widget */}
