@@ -14,11 +14,11 @@ import { MOCK_POSTS, DEFAULT_SETTINGS } from './constants';
 import { Post, SiteSettings } from './types';
 
 const App: React.FC = () => {
-  const STORAGE_KEY = 'abdullahsaad_posts_v4';
-  const SETTINGS_KEY = 'abdullahsaad_settings_v4';
-  const READ_SETTINGS_KEY = 'abdullahsaad_reader_v4';
+  const STORAGE_KEY = 'abdullahsaad_posts_v5';
+  const SETTINGS_KEY = 'abdullahsaad_settings_v5';
+  const READ_SETTINGS_KEY = 'abdullahsaad_reader_v5';
 
-  // State with Safe Fallbacks
+  // State with Hardcoded Fallbacks for Fail-Safe Boot
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginPassword, setLoginPassword] = useState('');
@@ -26,13 +26,11 @@ const App: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (!saved) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_POSTS));
-        return MOCK_POSTS;
-      }
-      return JSON.parse(saved);
+      if (!saved) return MOCK_POSTS;
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : MOCK_POSTS;
     } catch (e) {
-      console.error("Failed to load posts:", e);
+      console.warn("Storage recovery failed, using default posts.");
       return MOCK_POSTS;
     }
   });
@@ -40,13 +38,11 @@ const App: React.FC = () => {
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
     try {
       const saved = localStorage.getItem(SETTINGS_KEY);
-      if (!saved) {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(DEFAULT_SETTINGS));
-        return DEFAULT_SETTINGS;
-      }
-      return JSON.parse(saved);
+      if (!saved) return DEFAULT_SETTINGS;
+      const parsed = JSON.parse(saved);
+      return parsed && parsed.siteName ? parsed : DEFAULT_SETTINGS;
     } catch (e) {
-      console.error("Failed to load settings:", e);
+      console.warn("Storage recovery failed, using default settings.");
       return DEFAULT_SETTINGS;
     }
   });
@@ -65,31 +61,32 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<'home' | 'about'>('home');
   const [currentPostId, setCurrentPostId] = useState<number | null>(null);
 
-  // Sync with URL on Load
+  // Sync with URL & Persistence
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const postId = params.get('post');
     const page = params.get('page');
-    
     if (postId) setCurrentPostId(parseInt(postId));
     if (page === 'about') setCurrentPage('about');
   }, []);
 
-  // Sync State to Storage
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(posts)); }, [posts]);
-  useEffect(() => { localStorage.setItem(SETTINGS_KEY, JSON.stringify(siteSettings)); }, [siteSettings]);
-  useEffect(() => { localStorage.setItem(READ_SETTINGS_KEY, JSON.stringify(readingSettings)); }, [readingSettings]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(siteSettings));
+      localStorage.setItem(READ_SETTINGS_KEY, JSON.stringify(readingSettings));
+    } catch (e) {
+      console.error("Storage sync failed:", e);
+    }
+  }, [posts, siteSettings, readingSettings]);
 
-  // Navigation Logic
   const navigateTo = (page: 'home' | 'about', postId: number | null = null) => {
     setCurrentPage(page);
     setCurrentPostId(postId);
-    
     const newUrl = new URL(window.location.href);
     newUrl.search = "";
     if (postId) newUrl.searchParams.set('post', postId.toString());
     if (page === 'about') newUrl.searchParams.set('page', 'about');
-    
     window.history.pushState({}, '', newUrl);
     window.scrollTo(0, 0);
   };
@@ -103,7 +100,7 @@ const App: React.FC = () => {
   }, [posts, categoryFilter, searchQuery]);
 
   const selectedPostData = useMemo(() => {
-    return posts.find(p => p.id === currentPostId);
+    return posts.find(p => p.id === currentPostId) || null;
   }, [posts, currentPostId]);
 
   const handleAdminLogin = (e: React.FormEvent) => {
@@ -117,17 +114,11 @@ const App: React.FC = () => {
     }
   };
 
-  const typographyStyles = {
-    '--article-font-size': `${readingSettings.fontSize}px`,
-  } as React.CSSProperties;
-
   if (isAdminLoggedIn) {
     return (
       <AdminDashboard 
-        posts={posts} 
-        settings={siteSettings}
-        onUpdatePosts={setPosts} 
-        onUpdateSettings={setSiteSettings}
+        posts={posts} settings={siteSettings}
+        onUpdatePosts={setPosts} onUpdateSettings={setSiteSettings}
         onLogout={() => setIsAdminLoggedIn(false)} 
       />
     );
@@ -136,15 +127,14 @@ const App: React.FC = () => {
   return (
     <div 
       className={`min-h-screen flex flex-col font-sans bg-white ${readingSettings.fontFamily}`}
-      style={typographyStyles}
+      style={{ '--article-font-size': `${readingSettings.fontSize}px` } as React.CSSProperties}
     >
       <TopBar />
       <Header 
         onSearch={setSearchQuery} 
         onFilter={(c) => { setCategoryFilter(c); navigateTo('home'); }} 
         onNavigateAbout={() => navigateTo('about')}
-        currentCategory={categoryFilter} 
-        currentPage={currentPage}
+        currentCategory={categoryFilter} currentPage={currentPage}
         siteName={siteSettings.siteName}
         onGoHome={() => { setCategoryFilter('All'); navigateTo('home'); }}
       />
@@ -179,22 +169,17 @@ const App: React.FC = () => {
                     <PostCard post={filteredPosts[0]} onViewPost={(id) => navigateTo('home', id)} featured />
                   </div>
                 )}
-                
                 <div className="mb-10 flex items-center justify-between border-b border-gray-100 pb-4">
                   <h2 className="text-2xl font-bold serif-content text-brand-teal uppercase tracking-widest">
                     {categoryFilter === 'All' ? 'সাম্প্রতিক সমাহার' : `${categoryFilter} আর্কাইভ`}
                   </h2>
                 </div>
-
                 <div className="grid grid-cols-1 gap-12">
                   {filteredPosts.slice(categoryFilter === 'All' && searchQuery === '' ? 1 : 0).map((post) => (
                     <PostCard key={post.id} post={post} onViewPost={(id) => navigateTo('home', id)} />
                   ))}
                   {filteredPosts.length === 0 && (
-                    <div className="py-20 text-center space-y-4">
-                       <i className="fas fa-search text-5xl text-gray-200"></i>
-                       <h3 className="text-xl serif-content text-gray-400">দুঃখিত, কোনো লেখা পাওয়া যায়নি।</h3>
-                    </div>
+                    <div className="py-20 text-center text-gray-400 serif-content">দুঃখিত, কোনো লেখা পাওয়া যায়নি।</div>
                   )}
                 </div>
               </div>
@@ -209,12 +194,7 @@ const App: React.FC = () => {
       <Footer />
       
       <div className="fixed bottom-4 left-4 z-50">
-        <button 
-          onClick={() => setShowLoginModal(true)} 
-          className="text-[10px] uppercase font-bold text-gray-300 hover:text-brand-gold transition-all opacity-30"
-        >
-          CMS Access
-        </button>
+        <button onClick={() => setShowLoginModal(true)} className="text-[10px] uppercase font-bold text-gray-300 hover:text-brand-gold opacity-30">CMS Access</button>
       </div>
 
       {showLoginModal && (
@@ -222,16 +202,9 @@ const App: React.FC = () => {
           <div className="bg-white p-8 w-full max-w-sm rounded-xl shadow-2xl">
              <h3 className="text-xl font-bold serif-content text-brand-teal mb-6 text-center">অ্যাডমিন প্রবেশাধিকার</h3>
              <form onSubmit={handleAdminLogin} className="space-y-4">
-                <input 
-                  type="password" 
-                  placeholder="পাসওয়ার্ড লিখুন..." 
-                  className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 outline-none text-center text-xl"
-                  autoFocus
-                  value={loginPassword}
-                  onChange={e => setLoginPassword(e.target.value)}
-                />
+                <input type="password" placeholder="পাসওয়ার্ড লিখুন..." className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-center text-xl" autoFocus value={loginPassword} onChange={e => setLoginPassword(e.target.value)} />
                 <button type="submit" className="bg-brand-teal text-white w-full py-3 rounded-lg font-bold">লগইন</button>
-                <button type="button" onClick={() => setShowLoginModal(false)} className="block w-full text-center text-xs text-gray-400 font-bold uppercase tracking-widest mt-2">বাতিল</button>
+                <button type="button" onClick={() => setShowLoginModal(false)} className="block w-full text-center text-xs text-gray-400 mt-2 uppercase">বাতিল</button>
              </form>
           </div>
         </div>
